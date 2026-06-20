@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Master Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { background: #F5F7FA; min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; padding-bottom: 60px; }
+
+    .header {
+      background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+      color: white; padding: 18px 22px;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 2px 12px rgba(31, 56, 100, 0.25);
+    }
+    .header-row {
+      max-width: 980px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .header h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+    .header .sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.15);
+      padding: 5px 12px; border-radius: 16px;
+      font-size: 11px; font-weight: 600;
+    }
+    .live-dot {
+      width: 8px; height: 8px; background: #4CD964;
+      border-radius: 50%; animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px; }
+
+    /* === Stats row === */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: white; border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .stat-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: #888; margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 28px; font-weight: 700; color: #1F3864;
+      font-feature-settings: "tnum"; line-height: 1.1;
+    }
+    .stat-card.urgent .stat-value { color: #C0392B; }
+    .stat-card.success .stat-value { color: #2D7A4D; }
+    .stat-sub { font-size: 11px; color: #888; margin-top: 4px; }
+
+    /* === Section header === */
+    .section-title {
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: #666; margin: 8px 4px 12px;
+    }
+
+    /* === Kitchen counts === */
+    .kitchen {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px; margin-bottom: 24px;
+    }
+    .kitchen-card {
+      background: white; border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-left: 4px solid #2E75B6;
+    }
+    .kitchen-dish {
+      font-size: 13px; font-weight: 600; color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+    .kitchen-counts {
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .kitchen-total {
+      font-size: 24px; font-weight: 700;
+      color: #1F3864; font-feature-settings: "tnum";
+    }
+    .kitchen-pending {
+      font-size: 11px; font-weight: 600; color: #C0392B;
+    }
+    .kitchen-served {
+      font-size: 11px; font-weight: 500; color: #2D7A4D;
+    }
+
+    /* === Table grid === */
+    .tables {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 6px; margin-bottom: 24px;
+    }
+    .table-cell {
+      background: white; border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: all 180ms;
+    }
+    .table-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+    .table-cell.empty { opacity: 0.5; }
+    .table-cell.busy { border-color: #C0392B; background: #FFF6F4; }
+    .table-cell.active { border-color: #2E75B6; box-shadow: 0 0 0 2px rgba(46, 117, 182, 0.18); }
+    .table-num {
+      font-size: 11px; font-weight: 700;
+      color: #1F3864; letter-spacing: 0.05em;
+    }
+    .table-pending {
+      font-size: 18px; font-weight: 700;
+      margin-top: 2px;
+      color: #C0392B;
+    }
+    .table-pending.zero { color: #BBB; }
+
+    /* === Filter pills === */
+    .filter-pills { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filter-pill {
+      background: white; border: 1px solid rgba(0,0,0,0.1);
+      padding: 6px 14px; border-radius: 16px;
+      font-size: 12px; font-weight: 600; color: #666;
+      cursor: pointer; transition: all 180ms;
+    }
+    .filter-pill:hover { border-color: #2E75B6; }
+    .filter-pill.active {
+      background: #1F3864; color: white; border-color: #1F3864;
+    }
+
+    /* === Order list === */
+    .orders { display: flex; flex-direction: column; gap: 8px; }
+    .order-card {
+      background: white; border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      position: relative; transition: opacity 0.3s;
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 12px; align-items: center;
+    }
+    .order-card.fresh { border-left: 4px solid #2E75B6; padding-left: 10px; }
+    .order-card.served { opacity: 0.55; }
+    .order-card.served .dish { text-decoration: line-through; color: #999; }
+    .table-pill {
+      background: #FFF4D6; color: #8B6914;
+      font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 10px;
+      white-space: nowrap;
+    }
+    .order-body { min-width: 0; }
+    .order-dish { font-size: 14px; font-weight: 600; color: #2E75B6; margin-bottom: 2px; }
+    .order-guest { font-size: 12px; color: #666; }
+    .order-time { font-size: 11px; color: #999; white-space: nowrap; }
+    .btn {
+      background: #2E75B6; color: white; border: none;
+      padding: 6px 12px; border-radius: 14px;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .btn.done { background: #E0E0E0; color: #888; }
+    .btn:disabled { opacity: 0.5; }
+
+    .empty {
+      text-align: center; padding: 60px 20px; color: #888;
+      background: white; border-radius: 14px;
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 8px; }
+
+    .error-banner {
+      background: #FDECEC; color: #C0392B;
+      padding: 12px 16px; font-size: 12px;
+      border-radius: 10px; margin-bottom: 16px;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1a1a1a; color: white;
+      padding: 10px 18px; border-radius: 22px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: all 280ms;
+      pointer-events: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .brand-mark {
+      text-align: center;
+      padding: 32px 16px 12px;
+      color: #999;
+    }
+    .brand-line { font-size: 11px; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .brand-link { color: #2E75B6; font-weight: 700; text-decoration: none; }
+    .brand-tagline { font-style: italic; font-family: Georgia, serif; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <h1>Master Dashboard</h1>
+        <div class="sub" id="sub">Loading…</div>
+      </div>
+      <div class="live-pill"><span class="live-dot"></span> Live</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div id="error-zone"></div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="section-title" id="kitchen-title" style="display:none;">Kitchen Prep · Live Counts</div>
+    <div class="kitchen" id="kitchen"></div>
+
+    <div class="section-title" id="tables-title" style="display:none;">Tables · Tap to filter</div>
+    <div class="tables" id="tables"></div>
+
+    <div class="filter-pills" id="filter-pills" style="display:none;">
+      <div class="filter-pill active" data-filter="all">All orders</div>
+      <div class="filter-pill" data-filter="pending">Pending</div>
+      <div class="filter-pill" data-filter="served">Served</div>
+    </div>
+
+    <div class="orders" id="orders">
+      <div class="empty"><div class="empty-icon">⏳</div>Loading orders…</div>
+    </div>
+  </div>
+
+  <div class="brand-mark">
+    <div class="brand-line">Brought to you by <a class="brand-link" href="https://sydneysaver.app" target="_blank" rel="noopener">SydneySaver.app</a></div>
+    <span class="brand-tagline">Beat the chains.</span>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbxsXrqdco66FHr_MnKSEOK8vdkbAtjJsPp-8ykabUjE-2Sn0VSVZ3MLBSnXVNr9okWt/exec';
+    var REFRESH_MS = 10000;
+    var TABLE_COUNT = 25;
+
+    var currentFilter = 'all';
+    var tableFilter = null;
+    var allOrders = [];
+    var menuItems = [];
+    var prevPending = 0;
+    var firstLoad = true;
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function() { t.classList.remove('show'); }, 2800);
+    }
+
+    function relativeTime(ts, now) {
+      if (!ts) return '';
+      var minsAgo = Math.round((now - ts) / 60000);
+      if (minsAgo < 1) return 'just now';
+      if (minsAgo === 1) return '1 min ago';
+      if (minsAgo < 60) return minsAgo + ' min';
+      return ts.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function apiCall(fn, args) {
+      return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fn: fn, args: args || [] }),
+        redirect: 'follow'
+      }).then(function(r) { return r.json(); });
+    }
+
+    // === Kitchen counts by dish name (groups the base name, e.g. "Swallow Platter" regardless of sub-options) ===
+    function baseDishName(s) {
+      return String(s || '').split(' — ')[0].trim();
+    }
+
+    function bootstrap() {
+      apiCall('getConfig', []).then(function(cfg) {
+        if (cfg && cfg.menu) menuItems = cfg.menu;
+        document.getElementById('sub').textContent =
+          (cfg.honoree ? cfg.honoree + "'s " + cfg.eventName : (cfg.eventName || 'Party')) +
+          ' · Refreshing every 10s';
+        load();
+        setInterval(load, REFRESH_MS);
+      }).catch(function() {
+        document.getElementById('error-zone').innerHTML =
+          '<div class="error-banner">⚠️ Could not load config. Will retry…</div>';
+        setTimeout(bootstrap, 4000);
+      });
+    }
+
+    function load() {
+      apiCall('getOrders', ['']).then(function(orders) {
+        if (orders && orders.error) {
+          document.getElementById('error-zone').innerHTML =
+            '<div class="error-banner">⚠️ ' + escapeHTML(orders.error) + '</div>';
+          return;
+        }
+        document.getElementById('error-zone').innerHTML = '';
+        allOrders = Array.isArray(orders) ? orders : [];
+
+        // Notify on new pending orders
+        var pendingNow = allOrders.filter(function(o) { return !o.served; }).length;
+        if (!firstLoad && pendingNow > prevPending) {
+          var diff = pendingNow - prevPending;
+          showToast(diff + ' new order' + (diff > 1 ? 's' : ''));
+        }
+        prevPending = pendingNow;
+        firstLoad = false;
+
+        renderAll();
+      }).catch(function() {
+        document.getElementById('error-zone').innerHTML =
+          '<div class="error-banner">⚠️ Could not load orders. Will retry in 10s.</div>';
+      });
+    }
+
+    function renderAll() {
+      renderStats();
+      renderKitchen();
+      renderTables();
+      renderOrders();
+    }
+
+    function renderStats() {
+      var pending = allOrders.filter(function(o) { return !o.served; });
+      var served  = allOrders.filter(function(o) { return o.served; });
+
+      var now = new Date();
+      var avgWaitMin = '—';
+      if (pending.length > 0) {
+        var sum = pending.reduce(function(acc, o) {
+          var t = o.timestamp ? new Date(o.timestamp).getTime() : now.getTime();
+          return acc + (now.getTime() - t);
+        }, 0);
+        avgWaitMin = Math.round(sum / pending.length / 60000) + ' min';
+      }
+
+      var html = '';
+      html += statCard('Total orders', allOrders.length, 'tonight', '');
+      html += statCard('Pending', pending.length, 'awaiting service', pending.length > 0 ? 'urgent' : '');
+      html += statCard('Served', served.length, 'completed', served.length > 0 ? 'success' : '');
+      html += statCard('Avg wait', avgWaitMin, 'of pending orders', '');
+
+      document.getElementById('stats').innerHTML = html;
+    }
+
+    function statCard(label, value, sub, mod) {
+      var cls = 'stat-card' + (mod ? ' ' + mod : '');
+      return '<div class="' + cls + '">' +
+        '<div class="stat-label">' + label + '</div>' +
+        '<div class="stat-value">' + escapeHTML(String(value)) + '</div>' +
+        '<div class="stat-sub">' + escapeHTML(sub) + '</div>' +
+      '</div>';
+    }
+
+    function renderKitchen() {
+      if (!menuItems.length || !allOrders.length) {
+        document.getElementById('kitchen').innerHTML = '';
+        document.getElementById('kitchen-title').style.display = 'none';
+        return;
+      }
+      document.getElementById('kitchen-title').style.display = 'block';
+
+      // Tally orders per base dish
+      var tally = {};
+      menuItems.forEach(function(m) { tally[m.name] = { total: 0, pending: 0, served: 0 }; });
+      allOrders.forEach(function(o) {
+        var base = baseDishName(o.dish);
+        if (!tally[base]) tally[base] = { total: 0, pending: 0, served: 0 };
+        tally[base].total++;
+        if (o.served) tally[base].served++;
+        else tally[base].pending++;
+      });
+
+      var html = Object.keys(tally).map(function(name) {
+        var t = tally[name];
+        return '<div class="kitchen-card">' +
+          '<div class="kitchen-dish">' + escapeHTML(name) + '</div>' +
+          '<div class="kitchen-counts">' +
+            '<span class="kitchen-total">' + t.total + '</span>' +
+            (t.pending > 0 ? '<span class="kitchen-pending">' + t.pending + ' pending</span>' : '') +
+            (t.served > 0 ? '<span class="kitchen-served">' + t.served + ' done</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+      document.getElementById('kitchen').innerHTML = html;
+    }
+
+    function renderTables() {
+      document.getElementById('tables-title').style.display = 'block';
+      // Tally pending per table
+      var perTable = {};
+      allOrders.forEach(function(o) {
+        if (o.served) return;
+        var n = parseInt(o.table, 10);
+        if (!isNaN(n)) perTable[n] = (perTable[n] || 0) + 1;
+      });
+
+      var html = '';
+      for (var i = 1; i <= TABLE_COUNT; i++) {
+        var pending = perTable[i] || 0;
+        var cls = 'table-cell';
+        if (pending === 0) cls += ' empty';
+        else if (pending >= 3) cls += ' busy';
+        if (tableFilter === i) cls += ' active';
+        html += '<div class="' + cls + '" onclick="toggleTableFilter(' + i + ')">' +
+          '<div class="table-num">TABLE ' + i + '</div>' +
+          '<div class="table-pending' + (pending === 0 ? ' zero' : '') + '">' + pending + '</div>' +
+        '</div>';
+      }
+      document.getElementById('tables').innerHTML = html;
+    }
+
+    function toggleTableFilter(n) {
+      tableFilter = (tableFilter === n) ? null : n;
+      renderTables();
+      renderOrders();
+    }
+
+    function renderOrders() {
+      document.getElementById('filter-pills').style.display = 'flex';
+      var filtered = allOrders.filter(function(o) {
+        if (currentFilter === 'pending' && o.served) return false;
+        if (currentFilter === 'served' && !o.served) return false;
+        if (tableFilter !== null && parseInt(o.table, 10) !== tableFilter) return false;
+        return true;
+      });
+
+      var container = document.getElementById('orders');
+      if (!filtered.length) {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">' +
+          (currentFilter === 'pending' ? '✓' : '🍽️') + '</div>' +
+          (currentFilter === 'pending' ? 'All caught up — no pending orders.' : 'No orders match your filter.') +
+        '</div>';
+        return;
+      }
+
+      var now = new Date();
+      container.innerHTML = filtered.map(function(o) {
+        var ts = o.timestamp ? new Date(o.timestamp) : null;
+        var minsAgo = ts ? Math.round((now - ts) / 60000) : 999;
+        var fresh = minsAgo < 5 && !o.served;
+        var cls = 'order-card' + (fresh ? ' fresh' : '') + (o.served ? ' served' : '');
+        return '<div class="' + cls + '">' +
+          '<span class="table-pill">T' + escapeHTML(o.table) + '</span>' +
+          '<div class="order-body">' +
+            '<div class="order-dish">' + escapeHTML(o.dish) + '</div>' +
+            '<div class="order-guest">' + escapeHTML(o.name || '') + '</div>' +
+          '</div>' +
+          '<div class="order-time">' + escapeHTML(relativeTime(ts, now)) + '</div>' +
+          '<button class="btn' + (o.served ? ' done' : '') + '" onclick="toggleServed(' + o.row + ',' + (!o.served) + ', this)">' +
+            (o.served ? '✓ Served' : 'Mark served') +
+          '</button>' +
+        '</div>';
+      }).join('');
+    }
+
+    function toggleServed(row, served, btn) {
+      btn.disabled = true;
+      var original = btn.textContent;
+      btn.textContent = 'Saving…';
+      apiCall('markServed', [row, served]).then(function(res) {
+        if (res && res.error) {
+          showToast('Save failed: ' + res.error);
+          btn.disabled = false;
+          btn.textContent = original;
+        } else {
+          load();
+        }
+      }).catch(function() {
+        showToast('Could not save. Try again.');
+        btn.disabled = false;
+        btn.textContent = original;
+      });
+    }
+
+    // Filter pill listeners
+    document.querySelectorAll('.filter-pill').forEach(function(p) {
+      p.addEventListener('click', function() {
+        document.querySelectorAll('.filter-pill').forEach(function(x) { x.classList.remove('active'); });
+        p.classList.add('active');
+        currentFilter = p.dataset.filter;
+        renderOrders();
+      });
+    });
+
+    bootstrap();
+  </script>
+</body>
+</html>
