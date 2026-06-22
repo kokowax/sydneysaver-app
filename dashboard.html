@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { background: #F7F9FC; min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; padding-bottom: 80px; }
+
+    .header {
+      background: #2E75B6; color: white; padding: 14px 18px;
+      position: sticky; top: 32px; z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header h1 { font-size: 17px; font-weight: 600; }
+    .header .sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+    .filter-bar {
+      background: #1F3864; padding: 8px 16px;
+      display: flex; gap: 6px; overflow-x: auto; align-items: center;
+      position: sticky; top: 100px; z-index: 9;
+    }
+    .filter-label { color: rgba(255,255,255,0.7); font-size: 11px; margin-right: 4px; flex-shrink: 0; }
+    .chip { background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .chip.active { background: white; color: #1F3864; }
+
+    .live-indicator {
+      display: inline-block; width: 8px; height: 8px;
+      background: #4CD964; border-radius: 50%;
+      margin-left: 8px; flex-shrink: 0;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .counts { display: flex; gap: 6px; margin-top: 6px; }
+    .count-chip {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 9px; border-radius: 10px;
+      background: rgba(255,255,255,0.22); color: white;
+    }
+    .count-chip.served { background: rgba(255,255,255,0.10); opacity: 0.75; }
+
+    .order-list { padding: 12px; }
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 6px 10px;
+      font-size: 10px; font-weight: 700;
+      color: #888; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: #DCDCDC;
+    }
+    .all-clear {
+      text-align: center; padding: 24px 16px 8px;
+      color: #2D7A4D; font-size: 13px; font-weight: 600;
+    }
+    .all-clear-icon { font-size: 32px; margin-bottom: 4px; opacity: 0.8; }
+
+    .order-card {
+      background: white; border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      position: relative; transition: opacity 0.3s;
+    }
+    .order-card.fresh { border-left: 4px solid #2E75B6; }
+    .order-card.fresh::after {
+      content: 'NEW';
+      position: absolute; top: 10px; right: 12px;
+      background: #2E75B6; color: white;
+      font-size: 9px; font-weight: 700;
+      padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .order-card.served { opacity: 0.55; }
+    .order-card.served .dish { text-decoration: line-through; color: #999; }
+
+    .order-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .table-pill {
+      background: #FFF4D6; color: #8B6914;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 10px;
+    }
+    .guest-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .dish { font-size: 15px; font-weight: 500; color: #2E75B6; margin-bottom: 6px; }
+    .order-meta { font-size: 11px; color: #888; display: flex; justify-content: space-between; align-items: center; }
+
+    .btn {
+      background: #2E75B6; color: white; border: none;
+      padding: 6px 14px; border-radius: 16px;
+      font-size: 11px; font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn.done { background: #E0E0E0; color: #888; }
+    .btn:disabled { opacity: 0.5; }
+
+    .empty { text-align: center; padding: 80px 20px; color: #888; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    .error-banner {
+      background: #FDECEC; color: #C0392B;
+      padding: 12px 16px; font-size: 12px;
+      border-bottom: 1px solid #f5c5c5;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1a1a1a; color: white;
+      padding: 10px 18px; border-radius: 22px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: all 0.3s;
+      pointer-events: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .contact-bar {
+      background: #1F3864;
+      color: rgba(255,255,255,0.92);
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+      z-index: 11;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .contact-bar .label { opacity: 0.7; margin-right: 4px; }
+    .contact-bar a {
+      color: #E8D9BE;
+      text-decoration: none;
+      font-weight: 700;
+      border-bottom: 1px solid transparent;
+      transition: border-color 200ms;
+    }
+    .contact-bar a:hover { border-color: #E8D9BE; }
+    .contact-bar .sep { opacity: 0.4; margin: 0 8px; }
+    @media (max-width: 380px) {
+      .contact-bar { font-size: 10px; padding: 7px 10px; }
+      .contact-bar .sep { margin: 0 4px; }
+    }
+
+    .brand-mark {
+      text-align: center;
+      padding: 28px 16px 8px;
+      color: #999;
+    }
+    .brand-line {
+      font-size: 11px; letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .brand-link {
+      color: #0D9488; font-weight: 700; text-decoration: none;
+    }
+    .brand-tagline {
+      font-style: italic; font-family: Georgia, serif;
+      font-size: 12px; color: #0D9488;
+    }
+  </style>
+</head>
+<body>
+  <div class="contact-bar">
+    <span class="label">For enquiries:</span>
+    <a href="tel:+610426476616">0426 476 616</a>
+    <span class="sep">·</span>
+    <a href="mailto:info@sydneysaver.app">info@sydneysaver.app</a>
+  </div>
+
+  <div class="header">
+    <h1>Order Dashboard</h1>
+    <div class="sub" id="sub">Loading…</div>
+    <div class="counts" id="counts"></div>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-label">Showing:</span>
+    <span id="chips"></span>
+    <span class="live-indicator" title="Live — refreshing every 10s"></span>
+  </div>
+  <div id="error-zone"></div>
+  <div class="order-list" id="orders">
+    <div class="empty"><div class="empty-icon">⏳</div>Loading orders…</div>
+  </div>
+  <div class="brand-mark">
+    <div class="brand-line">Brought to you by <a class="brand-link" href="https://sydneysaver.app" target="_blank" rel="noopener">SydneySaver.app</a></div>
+    <span class="brand-tagline">Beat the chains.</span>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===== CONFIGURE THIS =====
+    var API_URL = 'https://script.google.com/macros/s/AKfycbxsXrqdco66FHr_MnKSEOK8vdkbAtjJsPp-8ykabUjE-2Sn0VSVZ3MLBSnXVNr9okWt/exec';
+    // ==========================
+
+    var params = new URLSearchParams(window.location.search);
+    var TABLES      = params.get('tables') || '';
+    var SERVER_NAME = params.get('name') || '';
+    var REFRESH_MS  = 10000;
+
+    var firstLoad = true;
+    var prevCount = 0;
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function() { t.classList.remove('show'); }, 2800);
+    }
+
+    function relativeTime(ts, now) {
+      if (!ts) return '';
+      var minsAgo = Math.round((now - ts) / 60000);
+      if (minsAgo < 1) return 'just now';
+      if (minsAgo === 1) return '1 min ago';
+      if (minsAgo < 60) return minsAgo + ' min ago';
+      return ts.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function apiCall(fn, args) {
+      return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fn: fn, args: args || [] }),
+        redirect: 'follow'
+      }).then(function(r) { return r.json(); });
+    }
+
+    function render(orders) {
+      var errZone = document.getElementById('error-zone');
+      if (orders && orders.error) {
+        errZone.innerHTML = '<div class="error-banner">⚠️ ' + escapeHTML(orders.error) + '</div>';
+        return;
+      }
+      errZone.innerHTML = '';
+
+      var container = document.getElementById('orders');
+
+      if (!orders || orders.length === 0) {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">🍽️</div>No orders yet for your tables.<br><small style="opacity:0.7;">Refreshing every 10 seconds…</small></div>';
+        document.getElementById('counts').innerHTML = '';
+        prevCount = 0;
+        firstLoad = false;
+        return;
+      }
+
+      var pending = [];
+      var served  = [];
+      orders.forEach(function(o) { (o.served ? served : pending).push(o); });
+
+      if (!firstLoad && pending.length > prevCount) {
+        var diff = pending.length - prevCount;
+        showToast(diff + ' new order' + (diff > 1 ? 's' : ''));
+      }
+      prevCount = pending.length;
+      firstLoad = false;
+
+      var countsEl = document.getElementById('counts');
+      countsEl.innerHTML =
+        '<span class="count-chip">' + pending.length + ' pending</span>' +
+        (served.length > 0 ? '<span class="count-chip served">' + served.length + ' served</span>' : '');
+
+      var html = '';
+      var now = new Date();
+
+      if (pending.length === 0 && served.length > 0) {
+        html += '<div class="all-clear"><div class="all-clear-icon">✓</div>All caught up.</div>';
+      }
+
+      pending.forEach(function(o) { html += renderCard(o, now); });
+
+      if (served.length > 0 && pending.length > 0) {
+        html += '<div class="divider">Served · ' + served.length + '</div>';
+      } else if (served.length > 0) {
+        html += '<div class="divider">Served earlier</div>';
+      }
+
+      served.forEach(function(o) { html += renderCard(o, now); });
+
+      container.innerHTML = html;
+    }
+
+    function renderCard(o, now) {
+      var ts = o.timestamp ? new Date(o.timestamp) : null;
+      var minsAgo = ts ? Math.round((now - ts) / 60000) : 999;
+      var fresh = minsAgo < 5 && !o.served;
+
+      var classes = 'order-card' + (fresh ? ' fresh' : '') + (o.served ? ' served' : '');
+      var html = '<div class="' + classes + '">';
+      html +=   '<div class="order-top">';
+      html +=     '<span class="table-pill">TABLE ' + escapeHTML(o.table) + '</span>';
+      if (o.name) html += '<span class="guest-name">' + escapeHTML(o.name) + '</span>';
+      html +=   '</div>';
+      html +=   '<div class="dish">' + escapeHTML(o.dish) + '</div>';
+      html +=   '<div class="order-meta">';
+      html +=     '<span>' + escapeHTML(relativeTime(ts, now)) + '</span>';
+      html +=     '<button class="btn' + (o.served ? ' done' : '') + '" onclick="toggleServed(' + o.row + ', ' + (!o.served) + ', this)">' +
+                    (o.served ? 'Served ✓' : 'Mark served') +
+                  '</button>';
+      html +=   '</div>';
+      html += '</div>';
+      return html;
+    }
+
+    function load() {
+      apiCall('getOrders', [TABLES])
+        .then(render)
+        .catch(function() {
+          document.getElementById('error-zone').innerHTML =
+            '<div class="error-banner">⚠️ Could not load orders. Will retry in 10s.</div>';
+        });
+    }
+
+    function toggleServed(row, served, btn) {
+      btn.disabled = true;
+      var original = btn.textContent;
+      btn.textContent = 'Saving…';
+      apiCall('markServed', [row, served])
+        .then(function(res) {
+          if (res && res.error) {
+            showToast('Save failed: ' + res.error);
+            btn.disabled = false;
+            btn.textContent = original;
+          } else {
+            load();
+          }
+        })
+        .catch(function() {
+          showToast('Could not save. Try again.');
+          btn.disabled = false;
+          btn.textContent = original;
+        });
+    }
+
+    var subtitle = SERVER_NAME || 'Server view';
+    var tablesList = TABLES.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+    if (tablesList.length > 0) {
+      subtitle += ' · ' + tablesList.length + ' table' + (tablesList.length > 1 ? 's' : '');
+    } else {
+      subtitle += ' · all tables';
+    }
+    document.getElementById('sub').textContent = subtitle;
+
+    var chipsEl = document.getElementById('chips');
+    if (tablesList.length > 0) {
+      chipsEl.innerHTML = tablesList.map(function(t) {
+        return '<span class="chip active">Table ' + escapeHTML(t) + '</span>';
+      }).join(' ');
+    } else {
+      chipsEl.innerHTML = '<span class="chip active">All tables</span>';
+    }
+
+    load();
+    setInterval(load, REFRESH_MS);
+  </script>
+</body>
+</html>
